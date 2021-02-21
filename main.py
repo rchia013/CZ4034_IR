@@ -1,4 +1,4 @@
-import requests
+
 from flask import Flask
 from flask_restful import Api, Resource
 from flask import request
@@ -16,30 +16,30 @@ from collections import defaultdict
 
 app = Flask(__name__)
 api = Api(app)
+
+# =============================================================================
+# conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=DESKTOP-97U22LI;DATABASE=CZ4034;UID=sa;PWD=password1')
+# cursor = conn.cursor()
+# =============================================================================
+
 stop_words = set(stopwords.words("english"))
 lem = WordNetLemmatizer()
-
-conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=DESKTOP-97U22LI;DATABASE=CZ4034;UID=sa;PWD=password1')
-cursor = conn.cursor()
-
-company_ticker = {"baba":"alibaba",
-                  "amzn":"amazon",
-                  "aapl":"apple",
-                  "tsla":"tesla",
-                  "msft":"microsoft",
-                  "fb":"facebook",
-                  "googl":"google",
-                  "nio":"nio",
-                  "twtr":"twitter",
-                  "nflx":"netflix"
-                 }
-
-
 
 class SearchResource(Resource):    
     def __init__(self):
         self.InvIndex = defaultdict(set, self.getInvIndex())
         self.words = pd.Series(list(self.InvIndex.keys()))
+        self.company_ticker = {"baba":"alibaba",
+                              "amzn":"amazon",
+                              "aapl":"apple",
+                              "tsla":"tesla",
+                              "msft":"microsoft",
+                              "fb":"facebook",
+                              "googl":"google",
+                              "nio":"nio",
+                              "twtr":"twitter",
+                              "nflx":"netflix"
+                             }
         
     def get(self):
         query = request.args.get('query')
@@ -65,14 +65,12 @@ class SearchResource(Resource):
                 print("CUR: ")
                 print(cur)
                 
-                if cur in company_ticker:
-                    cur = company_ticker[cur]
+                if cur in self.company_ticker:
+                    cur = self.company_ticker[cur]
                 
                 reco_cur = self.JDreco(cur)
                 
-                print(reco_cur.get(0))
-                
-                matches = self.InvIndex[reco_cur.get(0)]
+                matches = self.InvIndex[reco_cur]
                 
                 match_index = [item[0] for item in matches]
                 print(match_index)
@@ -90,7 +88,7 @@ class SearchResource(Resource):
        
         spellings = self.words[self.words.str.startswith(entry[0])]
         distances = ((jaccard_distance(set(ngrams(entry,gram_number)),
-                                           set(ngrams(self.words,gram_number))), self.words)
+                                           set(ngrams(word,gram_number))), word)
                      for word in spellings)
         closest = min(distances)
         
